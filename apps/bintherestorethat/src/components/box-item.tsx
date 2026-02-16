@@ -96,6 +96,7 @@ export function BoxItem({ box, allBoxes, allItems, rooms }: BoxItemProps) {
   };
 
   return (
+    // eslint-disable-next-line react/style-prop-object
     <div ref={setNodeRef} style={style}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <DroppableBox box={box} hasChildren={childBoxes.length > 0 || itemsInBox.length > 0}>

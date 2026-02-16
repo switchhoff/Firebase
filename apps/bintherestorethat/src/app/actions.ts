@@ -267,18 +267,23 @@ export async function deleteBox(boxId: string) {
     
     // Recursive function to find all descendant boxes and items
     async function recursivelyDelete(currentBoxId: string) {
-      // Find and delete items in the current box
+      // Find items and child boxes concurrently
       const itemsQuery = query(collection(db, 'items'), where('boxId', '==', currentBoxId));
-      const itemsSnapshot = await getDocs(itemsQuery);
-      itemsSnapshot.forEach(itemDoc => batch.delete(itemDoc.ref));
-
-      // Find and recursively delete child boxes
       const childrenQuery = query(collection(db, 'boxes'), where('parentId', '==', currentBoxId));
-      const childrenSnapshot = await getDocs(childrenQuery);
-      for (const childDoc of childrenSnapshot.docs) {
-        await recursivelyDelete(childDoc.id);
-      }
-      
+
+      const [itemsSnapshot, childrenSnapshot] = await Promise.all([
+        getDocs(itemsQuery),
+        getDocs(childrenQuery),
+      ]);
+
+      // Delete items in the current box
+      itemsSnapshot.forEach((itemDoc) => batch.delete(itemDoc.ref));
+
+      // Recursively delete child boxes concurrently
+      await Promise.all(
+        childrenSnapshot.docs.map((childDoc) => recursivelyDelete(childDoc.id))
+      );
+
       // Delete the current box itself
       batch.delete(doc(db, 'boxes', currentBoxId));
     }

@@ -89,126 +89,127 @@ export function BoxItem({ box, allBoxes, allItems, rooms }: BoxItemProps) {
   };
 
   const handleRemoveItem = (itemId: string) => {
-    startDeleteTransition(async () => {
-      await deleteItem(itemId);
-      toast({ title: 'Item removed' });
-    });
-  };
+    startItemTransition(async () => {
+      startDeleteTransition(async () => {
+        await deleteItem(itemId);
+        toast({ title: 'Item removed' });
+      });
+    };
 
-  return (
-    // eslint-disable-next-line react/style-prop-object
-    <div ref={setNodeRef} style={style}>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <DroppableBox box={box} hasChildren={childBoxes.length > 0 || itemsInBox.length > 0}>
-          <div className="flex items-center p-4 w-full">
-            <span {...attributes} {...listeners} className="cursor-grab touch-none p-2">
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
-            </span>
-            <CollapsibleTrigger asChild>
-              <div className="flex items-center cursor-pointer flex-grow">
-                <ChevronRight className={`h-5 w-5 mr-2 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                {box.parentId ? <BoxIcon className="h-5 w-5 text-muted-foreground mr-3" /> : <Package className="h-5 w-5 text-muted-foreground mr-3" />}
-                <div className="flex-grow">
-                  <p className="font-semibold">{boxDisplayName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {box.size && !box.parentId ? `${box.size} | ` : ''}
-                    {itemsInBox.length} item(s), {childBoxes.length} box(es)
-                  </p>
-                  {box.tags && box.tags.length > 0 && !box.parentId && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {box.tags.map(tag => (
-                        <Badge key={tag} variant="outline" className="text-xs font-normal">{tag}</Badge>
-                      ))}
+    return (
+      // eslint-disable-next-line react/style-prop-object
+      <div ref={setNodeRef} style={style}>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <DroppableBox box={box} hasChildren={childBoxes.length > 0 || itemsInBox.length > 0}>
+            <div className="flex items-center p-4 w-full">
+              <span {...attributes} {...listeners} className="cursor-grab touch-none p-2">
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
+              </span>
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center cursor-pointer flex-grow">
+                  <ChevronRight className={`h-5 w-5 mr-2 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                  {box.parentId ? <BoxIcon className="h-5 w-5 text-muted-foreground mr-3" /> : <Package className="h-5 w-5 text-muted-foreground mr-3" />}
+                  <div className="flex-grow">
+                    <p className="font-semibold">{boxDisplayName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {box.size && !box.parentId ? `${box.size} | ` : ''}
+                      {itemsInBox.length} item(s), {childBoxes.length} box(es)
+                    </p>
+                    {box.tags && box.tags.length > 0 && !box.parentId && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {box.tags.map(tag => (
+                          <Badge key={tag} variant="outline" className="text-xs font-normal">{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+              {!box.parentId && (
+                <Button onClick={() => setShowQrCode(true)} size="icon" variant="ghost" aria-label="Generate QR Code" className="ml-2 flex-shrink-0">
+                  <QrCode className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+
+            <CollapsibleContent>
+              <CardContent className="pl-16 pr-4 pb-4">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2 text-sm">Items in {boxDisplayName}</h4>
+                    <div className="mt-2 space-y-2">
+                      <form onSubmit={handleAddItem} className="flex gap-2">
+                        <Input
+                          value={newItemName}
+                          onChange={(e) => setNewItemName(e.target.value)}
+                          placeholder="Add a new item..."
+                          className="h-9"
+                          disabled={isItemPending}
+                        />
+                        <Button type="submit" size="icon" variant="outline" className="h-9 w-9" disabled={isItemPending}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </form>
+                      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        {itemsInBox.length > 0 ? (
+                          <div className="space-y-2 pt-2">
+                            {itemsInBox.map((item) => (
+                              <SortableItem key={item.id} id={`item-${item.id}`} type="item" data={{ boxId: box.id }}>
+                                <Badge variant="secondary" className="pl-2 pr-1 py-1 text-sm justify-between w-full">
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-normal">{item.name}</span>
+                                  </div>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveItem(item.id)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </Badge>
+                              </SortableItem>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground pt-2 text-center">No items in this box yet.</p>
+                        )}
+                      </SortableContext>
                     </div>
-                  )}
-                </div>
-              </div>
-            </CollapsibleTrigger>
-            {!box.parentId && (
-              <Button onClick={() => setShowQrCode(true)} size="icon" variant="ghost" aria-label="Generate QR Code" className="ml-2 flex-shrink-0">
-                <QrCode className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
+                  </div>
 
-          <CollapsibleContent>
-            <CardContent className="pl-16 pr-4 pb-4">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm">Items in {boxDisplayName}</h4>
-                  <div className="mt-2 space-y-2">
-                    <form onSubmit={handleAddItem} className="flex gap-2">
-                      <Input
-                        value={newItemName}
-                        onChange={(e) => setNewItemName(e.target.value)}
-                        placeholder="Add a new item..."
-                        className="h-9"
-                        disabled={isItemPending}
-                      />
-                      <Button type="submit" size="icon" variant="outline" className="h-9 w-9" disabled={isItemPending}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </form>
-                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                      {itemsInBox.length > 0 ? (
-                        <div className="space-y-2 pt-2">
-                          {itemsInBox.map((item) => (
-                            <SortableItem key={item.id} id={`item-${item.id}`} type="item" data={{ boxId: box.id }}>
-                              <Badge variant="secondary" className="pl-2 pr-1 py-1 text-sm justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                  <Tag className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-normal">{item.name}</span>
-                                </div>
-                                <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleRemoveItem(item.id)}>
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            </SortableItem>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground pt-2 text-center">No items in this box yet.</p>
-                      )}
-                    </SortableContext>
+                  <div className="pt-2">
+                    <h4 className="font-semibold mb-2 text-sm">Boxes in {boxDisplayName}</h4>
+                    <div className="mt-2 space-y-2">
+                      <form onSubmit={handleAddBox} className="flex gap-2">
+                        <Input
+                          value={newBoxName}
+                          onChange={(e) => setNewBoxName(e.target.value)}
+                          placeholder="Add a new nested box..."
+                          className="h-9"
+                          disabled={isBoxPending}
+                        />
+                        <Button type="submit" size="icon" variant="outline" className="h-9 w-9" disabled={isBoxPending}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </form>
+                      <SortableContext items={childBoxIds} strategy={verticalListSortingStrategy}>
+                        {childBoxes.length > 0 ? (
+                          <div className="space-y-2 pt-2">
+                            {childBoxes.map(child => (
+                              <BoxItem key={child.id} box={child} allBoxes={allBoxes} allItems={allItems} rooms={rooms} />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground pt-2 text-center">No nested boxes.</p>
+                        )}
+                      </SortableContext>
+                    </div>
                   </div>
                 </div>
-
-                <div className="pt-2">
-                  <h4 className="font-semibold mb-2 text-sm">Boxes in {boxDisplayName}</h4>
-                  <div className="mt-2 space-y-2">
-                    <form onSubmit={handleAddBox} className="flex gap-2">
-                      <Input
-                        value={newBoxName}
-                        onChange={(e) => setNewBoxName(e.target.value)}
-                        placeholder="Add a new nested box..."
-                        className="h-9"
-                        disabled={isBoxPending}
-                      />
-                      <Button type="submit" size="icon" variant="outline" className="h-9 w-9" disabled={isBoxPending}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </form>
-                    <SortableContext items={childBoxIds} strategy={verticalListSortingStrategy}>
-                      {childBoxes.length > 0 ? (
-                        <div className="space-y-2 pt-2">
-                          {childBoxes.map(child => (
-                            <BoxItem key={child.id} box={child} allBoxes={allBoxes} allItems={allItems} rooms={rooms} />
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground pt-2 text-center">No nested boxes.</p>
-                      )}
-                    </SortableContext>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </DroppableBox>
-      </Collapsible>
-      {showQrCode && (
-        <QRCodeDialog box={box} open={showQrCode} onOpenChange={setShowQrCode} />
-      )}
-    </div>
-  );
-}
+              </CardContent>
+            </CollapsibleContent>
+          </DroppableBox>
+        </Collapsible>
+        {showQrCode && (
+          <QRCodeDialog box={box} open={showQrCode} onOpenChange={setShowQrCode} />
+        )}
+      </div>
+    );
+  }

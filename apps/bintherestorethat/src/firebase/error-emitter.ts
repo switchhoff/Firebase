@@ -14,6 +14,14 @@ class EventEmitter {
     return this;
   }
 
+  off(eventName: string, listener: Listener): this {
+    if (!this.events[eventName]) {
+      return this;
+    }
+    this.events[eventName] = this.events[eventName].filter(l => l !== listener);
+    return this;
+  }
+
   emit(eventName: string, ...args: any[]): boolean {
     const listeners = this.events[eventName];
     if (!listeners || listeners.length === 0) {

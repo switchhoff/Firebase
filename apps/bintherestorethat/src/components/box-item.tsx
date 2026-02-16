@@ -87,7 +87,7 @@ export function BoxItem({ box, allBoxes, allItems, rooms }: BoxItemProps) {
   };
 
   const handleRemoveItem = (itemId: string) => {
-    startTransition(async () => {
+    startItemTransition(async () => {
       await deleteItem(itemId);
       toast({ title: 'Item removed' });
     });

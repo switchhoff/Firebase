@@ -5,8 +5,9 @@ import { notFound } from 'next/navigation';
 import { Package, Warehouse, Box as BoxIcon, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export default async function BoxPage({ params }: { params: { id: string } }) {
-  const boxDataPromise = getBoxWithRoom(params.id);
+export default async function BoxPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const boxDataPromise = getBoxWithRoom(id);
   const allBoxesPromise = getBoxes();
   const allItemsPromise = getItems();
 

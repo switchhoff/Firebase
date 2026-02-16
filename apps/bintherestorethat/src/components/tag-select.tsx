@@ -41,25 +41,25 @@ export function TagSelect({ selectedTags, onChange, allowCreation = true }: TagS
     const tagName = search.trim();
     if (!tagName) return;
 
-     // Don't add if it already exists
+    // Don't add if it already exists
     if (allTags.some(t => t.name.toLowerCase() === tagName.toLowerCase())) {
-        if (!selectedTags.includes(tagName)) {
-            onChange([...selectedTags, tagName]);
-        }
-        setSearch('');
-        return;
+      if (!selectedTags.includes(tagName)) {
+        onChange([...selectedTags, tagName]);
+      }
+      setSearch('');
+      return;
     }
 
     if (!allowCreation) {
-        toast({ title: 'Cannot create new tags here', description: 'New tags can only be created from the main dashboard.', variant: 'default' });
-        return;
+      toast({ title: 'Cannot create new tags here', description: 'New tags can only be created from the main dashboard.', variant: 'default' });
+      return;
     }
 
     startTransition(async () => {
       const result = await addTag(tagName);
       if ('id' in result) {
         if (!allTags.some(t => t.id === result.id)) {
-            setAllTags([...allTags, result]);
+          setAllTags([...allTags, result]);
         }
         if (!selectedTags.includes(result.name)) {
           onChange([...selectedTags, result.name]);
@@ -85,30 +85,34 @@ export function TagSelect({ selectedTags, onChange, allowCreation = true }: TagS
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
+      <PopoverContent
         onOpenAutoFocus={(e) => e.preventDefault()}
         className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>
-          <CommandInput 
+          <CommandInput
             placeholder="Search or create tags..."
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>
-                {allowCreation ? (
-                     <Button
-                        className="w-full"
-                        variant="ghost"
-                        onClick={handleAddTag}
-                        disabled={isPending}
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Create &quot;{search}&quot;
-                    </Button>
+            <CommandEmpty className="py-2 text-center text-sm">
+              {allowCreation ? (
+                !search ? (
+                  <p className="text-muted-foreground">Type to create a new tag.</p>
                 ) : (
-                    "No tags found."
-                )}
+                  <Button
+                    className="w-full justify-start pl-2"
+                    variant="ghost"
+                    onClick={handleAddTag}
+                    disabled={isPending}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Create &quot;{search}&quot;
+                  </Button>
+                )
+              ) : (
+                "No tags found."
+              )}
             </CommandEmpty>
             <CommandGroup>
               {allTags.sort((a, b) => a.name.localeCompare(b.name)).map(tag => (

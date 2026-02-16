@@ -39,10 +39,10 @@ export function OwnerSelect({ selectedOwner, onChange, allowCreation = true }: O
 
     // Don't add if it already exists
     if (allOwners.some(o => o.name.toLowerCase() === ownerName.toLowerCase())) {
-        onChange(allOwners.find(o => o.name.toLowerCase() === ownerName.toLowerCase())!.name);
-        setPopoverOpen(false);
-        setNewOwnerName('');
-        return;
+      onChange(allOwners.find(o => o.name.toLowerCase() === ownerName.toLowerCase())!.name);
+      setPopoverOpen(false);
+      setNewOwnerName('');
+      return;
     }
 
     startTransition(async () => {
@@ -66,43 +66,47 @@ export function OwnerSelect({ selectedOwner, onChange, allowCreation = true }: O
           {selectedOwner || 'Select an owner...'}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
+      <PopoverContent
         onOpenAutoFocus={(e) => e.preventDefault()}
         className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>
-            <CommandInput 
-                placeholder="Search or create owner..."
-                value={newOwnerName}
-                onValueChange={setNewOwnerName}
-            />
-            <CommandList>
-            <CommandEmpty>
-                {allowCreation ? (
-                    <Button
-                        className="w-full"
-                        variant="ghost"
-                        onClick={handleAddOwner}
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Create &quot;{newOwnerName}&quot;
-                    </Button>
+          <CommandInput
+            placeholder="Search or create owner..."
+            value={newOwnerName}
+            onValueChange={setNewOwnerName}
+          />
+          <CommandList>
+            <CommandEmpty className="py-2 text-center text-sm">
+              {allowCreation ? (
+                !newOwnerName ? (
+                  <p className="text-muted-foreground">Type to create a new owner.</p>
                 ) : (
-                    "No owners found."
-                )}
+                  <Button
+                    className="w-full justify-start pl-2"
+                    variant="ghost"
+                    onClick={handleAddOwner}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Create &quot;{newOwnerName}&quot;
+                  </Button>
+                )
+              ) : (
+                "No owners found."
+              )}
             </CommandEmpty>
             <CommandGroup>
-                {allOwners.sort((a, b) => a.name.localeCompare(b.name)).map(owner => (
+              {allOwners.sort((a, b) => a.name.localeCompare(b.name)).map(owner => (
                 <CommandItem
-                    key={owner.id}
-                    onSelect={() => handleSelectOwner(owner.name)}
-                    className="flex justify-between"
+                  key={owner.id}
+                  onSelect={() => handleSelectOwner(owner.name)}
+                  className="flex justify-between"
                 >
-                    <span>{owner.name}</span>
-                    {selectedOwner === owner.name && <Check className="h-4 w-4" />}
+                  <span>{owner.name}</span>
+                  {selectedOwner === owner.name && <Check className="h-4 w-4" />}
                 </CommandItem>
-                ))}
+              ))}
             </CommandGroup>
-            </CommandList>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

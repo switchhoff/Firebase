@@ -14,6 +14,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { COLLECTIONS } from '@/lib/constants';
 import type { Box, Item, Owner, Room, Tag } from '@/lib/types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -24,7 +25,7 @@ export async function addRoom(name: string) {
     return { error: 'Room name is required.' };
   }
   const roomData = { name };
-  const collectionRef = collection(db, 'rooms');
+  const collectionRef = collection(db, COLLECTIONS.ROOMS);
   
   try {
     const docRef = await addDoc(collectionRef, roomData);
@@ -43,7 +44,7 @@ export async function addRoom(name: string) {
 }
 
 export async function getRooms(): Promise<Room[]> {
-  const q = query(collection(db, 'rooms'));
+  const q = query(collection(db, COLLECTIONS.ROOMS));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => {
     const data = doc.data();
@@ -58,7 +59,7 @@ export async function updateRoom(roomId: string, name: string) {
   if (!roomId || !name) {
     return { error: 'Room ID and name are required.' };
   }
-  const roomRef = doc(db, 'rooms', roomId);
+  const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
   try {
     await updateDoc(roomRef, { name });
     revalidatePath('/');
@@ -80,15 +81,15 @@ export async function deleteRoom(roomId: string) {
   
   try {
     const batch = writeBatch(db);
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
 
     // Find all boxes in the room
-    const boxesQuery = query(collection(db, 'boxes'), where('roomId', '==', roomId));
+    const boxesQuery = query(collection(db, COLLECTIONS.BOXES), where('roomId', '==', roomId));
     const boxesSnapshot = await getDocs(boxesQuery);
     
     // For each box, find and delete its items
     for (const boxDoc of boxesSnapshot.docs) {
-      const itemsQuery = query(collection(db, 'items'), where('boxId', '==', boxDoc.id));
+      const itemsQuery = query(collection(db, COLLECTIONS.ITEMS), where('boxId', '==', boxDoc.id));
       const itemsSnapshot = await getDocs(itemsQuery);
       itemsSnapshot.forEach((itemDoc) => {
         batch.delete(itemDoc.ref);
@@ -103,7 +104,7 @@ export async function deleteRoom(roomId: string) {
     revalidatePath('/settings');
   } catch (error) {
      const permissionError = new FirestorePermissionError({
-        path: `rooms/${roomId} and its contents`,
+        path: `${COLLECTIONS.ROOMS}/${roomId} and its contents`,
         operation: 'delete',
       });
       errorEmitter.emit('permission-error', permissionError);
@@ -139,7 +140,7 @@ export async function addBox(formData: FormData) {
     boxData.tags = tags;
 
     // Generate unique code
-    const boxesQuery = query(collection(db, 'boxes'));
+    const boxesQuery = query(collection(db, COLLECTIONS.BOXES));
     const querySnapshot = await getDocs(boxesQuery);
     const existingCodes = querySnapshot.docs
       .map(doc => doc.data().code)
@@ -168,7 +169,7 @@ export async function addBox(formData: FormData) {
     boxData.code = newCode;
   }
 
-  const collectionRef = collection(db, 'boxes');
+  const collectionRef = collection(db, COLLECTIONS.BOXES);
 
   try {
     const docRef = await addDoc(collectionRef, boxData);
@@ -186,7 +187,7 @@ export async function addBox(formData: FormData) {
 }
 
 export async function getBoxes(): Promise<Box[]> {
-    const q = query(collection(db, 'boxes'));
+    const q = query(collection(db, COLLECTIONS.BOXES));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -204,7 +205,7 @@ export async function getBoxes(): Promise<Box[]> {
 
 
 export async function getBoxWithRoom(boxId: string): Promise<{ box: Box; roomName: string } | null> {
-  const boxRef = doc(db, 'boxes', boxId);
+  const boxRef = doc(db, COLLECTIONS.BOXES, boxId);
   const boxSnap = await getDoc(boxRef);
 
   if (!boxSnap.exists()) {
@@ -224,7 +225,7 @@ export async function getBoxWithRoom(boxId: string): Promise<{ box: Box; roomNam
   let roomName = 'Unassigned';
   if (box.roomId) {
     try {
-      const roomRef = doc(db, 'rooms', box.roomId);
+      const roomRef = doc(db, COLLECTIONS.ROOMS, box.roomId);
       const roomSnap = await getDoc(roomRef);
       if (roomSnap.exists()) {
         roomName = roomSnap.data().name;
@@ -241,7 +242,7 @@ export async function updateBox(boxId: string, data: Partial<Omit<Box, 'id'>>) {
   if (!boxId) {
     return { error: 'Box ID is required.' };
   }
-  const boxRef = doc(db, 'boxes', boxId);
+  const boxRef = doc(db, COLLECTIONS.BOXES, boxId);
   try {
     await updateDoc(boxRef, data);
     revalidatePath('/');
@@ -267,25 +268,20 @@ export async function deleteBox(boxId: string) {
     
     // Recursive function to find all descendant boxes and items
     async function recursivelyDelete(currentBoxId: string) {
-      // Find items and child boxes concurrently
-      const itemsQuery = query(collection(db, 'items'), where('boxId', '==', currentBoxId));
-      const childrenQuery = query(collection(db, 'boxes'), where('parentId', '==', currentBoxId));
+      // Find and delete items in the current box
+      const itemsQuery = query(collection(db, COLLECTIONS.ITEMS), where('boxId', '==', currentBoxId));
+      const itemsSnapshot = await getDocs(itemsQuery);
+      itemsSnapshot.forEach(itemDoc => batch.delete(itemDoc.ref));
 
-      const [itemsSnapshot, childrenSnapshot] = await Promise.all([
-        getDocs(itemsQuery),
-        getDocs(childrenQuery),
-      ]);
-
-      // Delete items in the current box
-      itemsSnapshot.forEach((itemDoc) => batch.delete(itemDoc.ref));
-
-      // Recursively delete child boxes concurrently
-      await Promise.all(
-        childrenSnapshot.docs.map((childDoc) => recursivelyDelete(childDoc.id))
-      );
-
+      // Find and recursively delete child boxes
+      const childrenQuery = query(collection(db, COLLECTIONS.BOXES), where('parentId', '==', currentBoxId));
+      const childrenSnapshot = await getDocs(childrenQuery);
+      for (const childDoc of childrenSnapshot.docs) {
+        await recursivelyDelete(childDoc.id);
+      }
+      
       // Delete the current box itself
-      batch.delete(doc(db, 'boxes', currentBoxId));
+      batch.delete(doc(db, COLLECTIONS.BOXES, currentBoxId));
     }
 
     await recursivelyDelete(boxId);
@@ -295,7 +291,7 @@ export async function deleteBox(boxId: string) {
     revalidatePath('/settings');
   } catch (serverError) {
     const permissionError = new FirestorePermissionError({
-      path: `boxes/${boxId} and its descendants`,
+      path: `${COLLECTIONS.BOXES}/${boxId} and its descendants`,
       operation: 'delete',
     });
     errorEmitter.emit('permission-error', permissionError);
@@ -308,7 +304,7 @@ export async function addItem(name: string, boxId: string) {
     return { error: 'Item name and box ID are required.' };
   }
   const itemData = { name, boxId };
-  const collectionRef = collection(db, 'items');
+  const collectionRef = collection(db, COLLECTIONS.ITEMS);
 
   try {
     const docRef = await addDoc(collectionRef, itemData);
@@ -326,7 +322,7 @@ export async function addItem(name: string, boxId: string) {
 }
 
 export async function getItems(): Promise<Item[]> {
-  const q = query(collection(db, 'items'));
+  const q = query(collection(db, COLLECTIONS.ITEMS));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => {
     const data = doc.data();
@@ -339,7 +335,7 @@ export async function getItems(): Promise<Item[]> {
 }
 
 export async function getItemsForBox(boxId: string): Promise<Item[]> {
-  const q = query(collection(db, 'items'), where('boxId', '==', boxId));
+  const q = query(collection(db, COLLECTIONS.ITEMS), where('boxId', '==', boxId));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => {
     const data = doc.data();
@@ -355,7 +351,7 @@ export async function updateItem(itemId: string, data: Partial<Omit<Item, 'id'>>
   if (!itemId) {
     return { error: 'Item ID is required.' };
   }
-  const itemRef = doc(db, 'items', itemId);
+  const itemRef = doc(db, COLLECTIONS.ITEMS, itemId);
   try {
     await updateDoc(itemRef, data);
     revalidatePath('/');
@@ -373,7 +369,7 @@ export async function deleteItem(itemId: string) {
   if (!itemId) {
     return { error: 'Item ID is required.' };
   }
-  const itemRef = doc(db, 'items', itemId);
+  const itemRef = doc(db, COLLECTIONS.ITEMS, itemId);
   try {
     await deleteDoc(itemRef);
     revalidatePath('/');
@@ -388,7 +384,7 @@ export async function deleteItem(itemId: string) {
 
 // Owner Actions
 export async function getOwners(): Promise<Owner[]> {
-  const q = query(collection(db, 'owners'));
+  const q = query(collection(db, COLLECTIONS.OWNERS));
   try {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => ({
@@ -406,7 +402,7 @@ export async function addOwner(name: string): Promise<{ id: string; name: string
     return { error: 'Owner name is required.' };
   }
   const ownerName = name.trim();
-  const ownersQuery = query(collection(db, 'owners'), where('name', '==', ownerName));
+  const ownersQuery = query(collection(db, COLLECTIONS.OWNERS), where('name', '==', ownerName));
   
   try {
     const querySnapshot = await getDocs(ownersQuery);
@@ -417,14 +413,14 @@ export async function addOwner(name: string): Promise<{ id: string; name: string
     }
     
     const ownerData = { name: ownerName };
-    const collectionRef = collection(db, 'owners');
+    const collectionRef = collection(db, COLLECTIONS.OWNERS);
     const docRef = await addDoc(collectionRef, ownerData);
     revalidatePath('/');
     revalidatePath('/settings');
     return { id: docRef.id, name: ownerName };
   } catch (serverError) {
     const permissionError = new FirestorePermissionError({
-      path: `owners/<new_owner_id>`,
+      path: `${COLLECTIONS.OWNERS}/<new_owner_id>`,
       operation: 'create',
       requestResourceData: { name: ownerName },
     });
@@ -435,7 +431,7 @@ export async function addOwner(name: string): Promise<{ id: string; name: string
 
 // Tag Actions
 export async function getTags(): Promise<Tag[]> {
-  const q = query(collection(db, 'tags'));
+  const q = query(collection(db, COLLECTIONS.TAGS));
   try {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => ({
@@ -453,7 +449,7 @@ export async function addTag(name: string): Promise<{ id: string; name: string }
     return { error: 'Tag name is required.' };
   }
   const tagName = name.trim();
-  const tagsQuery = query(collection(db, 'tags'), where('name', '==', tagName));
+  const tagsQuery = query(collection(db, COLLECTIONS.TAGS), where('name', '==', tagName));
   
   try {
     const querySnapshot = await getDocs(tagsQuery);
@@ -464,14 +460,14 @@ export async function addTag(name: string): Promise<{ id: string; name: string }
     }
     
     const tagData = { name: tagName };
-    const collectionRef = collection(db, 'tags');
+    const collectionRef = collection(db, COLLECTIONS.TAGS);
     const docRef = await addDoc(collectionRef, tagData);
     revalidatePath('/');
     revalidatePath('/settings');
     return { id: docRef.id, name: tagName };
   } catch (serverError) {
     const permissionError = new FirestorePermissionError({
-      path: `tags/<new_tag_id>`,
+      path: `${COLLECTIONS.TAGS}/<new_tag_id>`,
       operation: 'create',
       requestResourceData: { name: tagName },
     });

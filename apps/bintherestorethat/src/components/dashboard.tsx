@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { onSnapshot, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { COLLECTIONS } from '@/lib/constants';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Accordion } from '@/components/ui/accordion';
@@ -27,32 +28,32 @@ export default function Dashboard() {
   useEffect(() => {
     setLoading(true);
     
-    const roomsUnsubscribe = onSnapshot(collection(db, 'rooms'), (snapshot) => {
+    const roomsUnsubscribe = onSnapshot(collection(db, COLLECTIONS.ROOMS), (snapshot) => {
       const roomsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Room));
       setRooms(roomsData);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching rooms: ", error);
-      const permissionError = new FirestorePermissionError({ path: 'rooms', operation: 'list' });
+      const permissionError = new FirestorePermissionError({ path: COLLECTIONS.ROOMS, operation: 'list' });
       errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 
-    const boxesUnsubscribe = onSnapshot(collection(db, 'boxes'), (snapshot) => {
+    const boxesUnsubscribe = onSnapshot(collection(db, COLLECTIONS.BOXES), (snapshot) => {
       const boxesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Box));
       setBoxes(boxesData);
     }, (error) => {
       console.error("Error fetching boxes: ", error);
-      const permissionError = new FirestorePermissionError({ path: 'boxes', operation: 'list' });
+      const permissionError = new FirestorePermissionError({ path: COLLECTIONS.BOXES, operation: 'list' });
       errorEmitter.emit('permission-error', permissionError);
     });
 
-    const itemsUnsubscribe = onSnapshot(collection(db, 'items'), (snapshot) => {
+    const itemsUnsubscribe = onSnapshot(collection(db, COLLECTIONS.ITEMS), (snapshot) => {
         const itemsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
         setItems(itemsData);
       }, (error) => {
         console.error("Error fetching items: ", error);
-        const permissionError = new FirestorePermissionError({ path: 'items', operation: 'list' });
+        const permissionError = new FirestorePermissionError({ path: COLLECTIONS.ITEMS, operation: 'list' });
         errorEmitter.emit('permission-error', permissionError);
       });
 

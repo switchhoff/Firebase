@@ -94,7 +94,7 @@ export function BoxItem({ box, allBoxes, allItems, rooms }: BoxItemProps) {
         await deleteItem(itemId);
         toast({ title: 'Item removed' });
       });
-    };
+    });
 
     return (
       // eslint-disable-next-line react/style-prop-object
